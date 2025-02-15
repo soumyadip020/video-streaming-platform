@@ -21,7 +21,7 @@ if([fullName,email,username,password].some((field)=>field?.trim()==="")){
   throw new ApiError(400,"full anme is required")
 }
 
-const existedUser=User.findOne({
+const existedUser= await User.findOne({
   $or:[
     {username},{email}
   ]
@@ -42,7 +42,7 @@ const  coverImage= await uploadOnCloudinary(coverImageLocalPath)
 if (!avatar) {
   throw new ApiError(500, "avatar upload failed") 
 }
-
+//create user inside database
  const user=await User.create({
 fullName,
 avatar:avatar.url,
@@ -63,7 +63,7 @@ if (!createdUser) {
 
 return res.status(201).json(
   new ApiResponse(200,createdUser,"User registered successfully",
-    
+
   )
 )
 
