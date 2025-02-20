@@ -32,6 +32,14 @@ if(existedUser){
 //middleware request ke andar aur fields  add kar deta hai
 const avatarLocalPath=req.files?.avatar[0]?.path
 const coverImageLocalPath=req.files?.coverImage[0]?.path
+console.log(req.files);
+
+//classic way toc heck whether the cover image is present or not
+// let coverImageLocalPath
+// if(req.files && Array.isArray(req.files.coverImage)&&
+// req.files.coverImage.length>0){
+// coverImageLocalPath=req.files.coverImage[0].path
+// }
 
 if (!avatarLocalPath) {
   throw new ApiError(400, "avatar is required")
@@ -70,4 +78,22 @@ return res.status(201).json(
 
 
 }) 
-export {registerUser}
+
+
+const loginUser=asyncHandler(async(req,res)=>{
+//req body->date
+//username or email
+//find the user
+//if user found->password check
+//correct-> access and refresh token
+//send cookie
+const {email,username,password}=req.body
+
+
+
+
+})
+
+export {registerUser
+  ,loginUser
+}
