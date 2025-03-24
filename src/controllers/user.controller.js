@@ -3,6 +3,22 @@ import ApiError from "../utils/ApiError.js"
 import {User} from "../models/user.model.js"
 import {uploadOnCloudinary} from "../utils/cloudinary.js"
 import ApiResponse from "../utils/ApiResponse.js"
+
+const generateAccessAndrefreshTokens =async(userId)=>{
+  try {
+     const user=await User.findById(userId)
+    const accessToken= user.generateRefreshToken()
+     const refreshToken= user.generateAccessToken()
+    
+user.refreshToken=refreshToken//saves to the database
+ await user.save({validateBeforeSave:false})//parameter 
+
+return {accessToken,refreshToken}
+  } catch (error) {
+    throw new ApiError(500,"something went wrong while generating refresh and access token")
+  }
+}
+
 const registerUser= asyncHandler(async (req,res)=>{
   //get user details
   //validation-not empty
@@ -81,19 +97,83 @@ return res.status(201).json(
 
 
 const loginUser=asyncHandler(async(req,res)=>{
-//req body->date
+//req body->data 
 //username or email
 //find the user
 //if user found->password check
 //correct-> access and refresh token
 //send cookie
 const {email,username,password}=req.body
-
-
-
-
+if (!(username||email)) {
+  throw new ApiError(400,"username or password is required")
+}
+//find by email or username
+ const user=await User.findOne({
+  //or operator 
+  $or:[{username},{email}]
 })
+if (!user) {
+  throw new ApiError(404,"user doesnot exist")
+}
+// User ->  db find one  availabe through mongoose
+//user -> current context all the custom methods written are available through this
 
+const isPasswordValid= await user.isPasswordCorrect(password)
+if (!isPasswordValid) {
+  throw new ApiError(401,"invalid user credential")
+}
+const {accessToken,refreshToken}= await generateAccessAndrefreshTokens(user._id)
+
+ const loggedInUser= await  User.findById(user._id).select(
+  "-password -refreshToken"
+ )//the fields that we donot want is eliminated by .select()
+//cookies
+ const options ={
+  httpOnly:true,//can be only modified through server
+  //cannot be modified using frontend
+  secure:true
+ }
+ return res.status(200)
+ .cookie("accessToken",accessToken,options)
+ .cookie("refreshToken",refreshToken,options)
+ .json(
+  //user is trying to save the access token and the refresh token in the local machine
+  new ApiResponse(
+    200,
+  {  user:loggedInUser,accessToken,
+    refreshToken
+  },
+   "user logged in sucessfully"
+  )
+ )
+})
+const logoutUser=asyncHandler(async(req,res)=>{
+ await  User.findByIdAndUpdate(
+  req.user._id,{
+    $set:{
+      refreshToken:undefined
+    }
+  
+  },
+  {
+    new:true
+    //in return response we will get the new updated value
+  }
+ )
+
+ const options={
+  httpOnly:true,
+  secure:true,
+ }
+
+ return  res
+     .status(200)
+     .clearCookie("accessToken",options)
+     .clearCookie("refreshToken",options)
+     .json(new ApiResponse(200,{},"User logged out"))
+})
+ 
 export {registerUser
-  ,loginUser
+  ,loginUser,
+  logoutUser
 }
